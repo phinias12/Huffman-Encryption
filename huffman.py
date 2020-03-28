@@ -23,28 +23,43 @@ def createRing(htree):
 
         heapq.heappush(htree, [left[0] + right[0]] + left[1:] + right[1:])
     codes = sorted(heapq.heappop(htree)[1:], key=lambda p: (len(p[-1]), p))
+
+    return codes
+
+def encode(msg):
+    count = collections.Counter(msg)
+    htree = [[weight, [char, '']] for char, weight in count.items()]
+    codes = createRing(htree)
     ring = dict()
 
     for code in codes:
         ring[code[0]] = code[1]
 
-    return ring
-
-def encode(msg):
-    print("Original MSG:", msg)
-    count = collections.Counter(msg)
-    htree = [[weight, [char, '']] for char, weight in count.items()]
-    ring = createRing(htree)
     cipher = str()
 
     for char in msg:
         cipher += ring[char]
 
-    return cipher, ring
+    return cipher, codes
 
 def decode(msg, decoderRing):
-    
-    raise NotImplementedError
+    ring = dict()
+    for code in decoderRing:
+        ring[code[0]] = code[1]
+
+    s = list(msg)
+    queue = []
+    decoded = str()
+    while len(s) != 0:
+        c = s.pop(0)
+        queue.append(c)
+        val = ''.join(queue)
+        if val in ring.values():
+            key = list(ring.keys())[list(ring.values()).index(val)]
+            decoded += str(chr(key))
+            queue = []
+
+    return decoded.encode()
 
 def compress(msg):
     # Initializes an array to hold the compressed message.
