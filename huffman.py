@@ -26,6 +26,19 @@ def createRing(htree):
 
     return codes
 
+def encodeToBinary(ascii):
+    binary = list(ascii)
+    buff = 0
+
+    for c in binary:
+        if c == "1":
+            buff = (buff << 1) | 0x01
+
+        if c == "0":
+            buff = (buff << 1) | 0x00
+
+    return buff
+
 def encode(msg):
     count = collections.Counter(msg)
     htree = [[weight, [char, '']] for char, weight in count.items()]
