@@ -53,13 +53,9 @@ def encode(msg):
     for char in msg:
         cipher += ring[char]
 
-    return cipher, codes
+    return cipher, ring
 
 def decode(msg, decoderRing):
-    ring = dict()
-    for code in decoderRing:
-        ring[code[0]] = code[1]
-
     s = list(msg)
     queue = []
     decoded = str()
@@ -67,23 +63,77 @@ def decode(msg, decoderRing):
         c = s.pop(0)
         queue.append(c)
         val = ''.join(queue)
-        if val in ring.values():
-            key = list(ring.keys())[list(ring.values()).index(val)]
+        if val in decoderRing.values():
+            key = list(decoderRing.keys())[list(decoderRing.values()).index(val)]
             decoded += str(chr(key))
             queue = []
 
     return decoded.encode()
 
 def compress(msg):
+    count = collections.Counter(msg)
+    htree = [[weight, [char, '']] for char, weight in count.items()]
+    codes = createRing(htree)
+    ring = dict()
+    binaryRing = dict()
+
+    for code in codes:
+        print(code[0], code[1])
+        ring[code[0]] = code[1]
+
+    print("Binary")
+    for code in codes:
+        binary = encodeToBinary(code[1])
+        print(code[0], binary)
+        binaryRing[code[0]] = binary
+
     # Initializes an array to hold the compressed message.
     compressed = array.array('B')
-    raise NotImplementedError
+
+    for char in msg:
+        binary = ring[char]
+        buff = 0
+        count = 0
+        for bit in binary:
+            if bit == "1":
+                #print("1", end="")
+                buff = (buff << 1) | 1
+
+            if bit == "0":
+                #print("0", end="")
+                buff = (buff << 1)
+
+            count = count + 1
+            if count > 7:
+                compressed.append(buff)
+                buff = 0
+                count = 0
+
+        compressed.append(buff)
+
+    return compressed, binaryRing
+
+    # Initializes an array to hold the compressed message.
+    # compressed = array.array('B')
+    # raise NotImplementedError
 
 def decompress(msg, decoderRing):
+    byteArray = array.array('B', msg)
+    queue = 0
+    decompressed = array.array('B')
+    while len(byteArray) != 0:
+        b = byteArray.pop(0)
+        queue = (queue << 1) | b
+        if queue in decoderRing.values():
+            key = list(decoderRing.keys())[list(decoderRing.values()).index(queue)]
+            decompressed.append(key)
+            queue = 0
+
+    return decompressed
 
     # Represent the message as an array
-    byteArray = array.array('B',msg)
-    raise NotImplementedError
+    # byteArray = array.array('B', msg)
+    # raise NotImplementedError
 
 def usage():
     sys.stderr.write("Usage: {} [-c|-d|-v|-w] infile outfile\n".format(sys.argv[0]))
