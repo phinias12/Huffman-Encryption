@@ -26,6 +26,15 @@ def createRing(htree):
 
     return codes
 
+def byteToStr(b, fill = 8):
+    byte = str()
+    while b != 0:
+        i = b % 2
+        byte = str(i) + byte
+        b = b//2
+
+    return byte.zfill(fill)
+
 def encodeToBinary(ascii):
     binary = list(ascii)
     buff = 0
@@ -44,31 +53,31 @@ def encode(msg):
     htree = [[weight, [char, '']] for char, weight in count.items()]
     codes = createRing(htree)
     ring = dict()
+    decodeRing = dict()
 
     for code in codes:
         ring[code[0]] = code[1]
+        decodeRing[code[1]] = code[0]
 
     cipher = str()
 
     for char in msg:
         cipher += ring[char]
 
-    return cipher, ring
+    return cipher, decodeRing
 
 def decode(msg, decoderRing):
     s = list(msg)
     queue = []
-    decoded = str()
-    while len(s) != 0:
-        c = s.pop(0)
+    decoded = array.array('B')
+    for c in s:
         queue.append(c)
         val = ''.join(queue)
-        if val in decoderRing.values():
-            key = list(decoderRing.keys())[list(decoderRing.values()).index(val)]
-            decoded += str(chr(key))
+        if val in decoderRing:
+            decoded.append(decoderRing[val])
             queue = []
 
-    return decoded.encode()
+    return decoded
 
 def compress(msg):
     count = collections.Counter(msg)
@@ -76,32 +85,28 @@ def compress(msg):
     codes = createRing(htree)
     ring = dict()
     binaryRing = dict()
+    decodeRing = dict()
 
     for code in codes:
-        print(code[0], code[1])
         ring[code[0]] = code[1]
+        decodeRing[code[1]] = code[0]
 
-    print("Binary")
     for code in codes:
         binary = encodeToBinary(code[1])
-        print(code[0], binary)
         binaryRing[code[0]] = binary
 
     # Initializes an array to hold the compressed message.
     compressed = array.array('B')
+    count = 0
+    buff = 0
 
     for char in msg:
         binary = ring[char]
-        buff = 0
-        count = 0
         for bit in binary:
-            if bit == "1":
-                #print("1", end="")
-                buff = (buff << 1) | 1
-
             if bit == "0":
-                #print("0", end="")
                 buff = (buff << 1)
+            else:
+                buff = (buff << 1) | 1
 
             count = count + 1
             if count > 7:
@@ -109,9 +114,10 @@ def compress(msg):
                 buff = 0
                 count = 0
 
+    if count < 7 and 0 < count:       
         compressed.append(buff)
-
-    return compressed, binaryRing
+    
+    return compressed, decodeRing
 
     # Initializes an array to hold the compressed message.
     # compressed = array.array('B')
@@ -119,15 +125,25 @@ def compress(msg):
 
 def decompress(msg, decoderRing):
     byteArray = array.array('B', msg)
-    queue = 0
+    binary = str()
+    for byte in range(len(byteArray)):
+        if byte < len(byteArray) - 1:
+            b = byteToStr(byteArray[byte])
+            binary = binary + b
+        else:
+            b = byteToStr(byteArray[byte], 0)
+            binary = binary + b
+
+    s = list(binary)
+    queue = []
     decompressed = array.array('B')
-    while len(byteArray) != 0:
-        b = byteArray.pop(0)
-        queue = (queue << 1) | b
-        if queue in decoderRing.values():
-            key = list(decoderRing.keys())[list(decoderRing.values()).index(queue)]
-            decompressed.append(key)
-            queue = 0
+
+    for c in s:
+        queue.append(c)
+        val = ''.join(queue)
+        if val in decoderRing:
+            decompressed.append(decoderRing[val])
+            queue = []
 
     return decompressed
 
@@ -173,6 +189,7 @@ if __name__=='__main__':
             fcompressed.close()
         else:
             enc, decoder = encode(msg)
+            print(enc)
             fcompressed = open(outfile, 'wb')
             marshal.dump((pickle.dumps(decoder), enc), fcompressed)
             fcompressed.close()
@@ -185,6 +202,7 @@ if __name__=='__main__':
             msg = decompress(compr, decoder)
         else:
             msg = decode(compr, decoder)
+            print(msg)
         fp = open(outfile, 'wb')
         fp.write(msg)
         fp.close()
